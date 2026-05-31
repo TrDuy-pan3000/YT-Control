@@ -1,7 +1,7 @@
 name: yt_control
 description: A 2-in-1 Karaoke App (TV & Phone Remote).
 publish_to: 'none'
-version: 1.2.1+1
+version: 1.2.2+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

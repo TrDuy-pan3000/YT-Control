@@ -25,6 +25,7 @@ class _TvPlayerWidgetState extends State<TvPlayerWidget> {
         data: widget.controller.playerHtml,
         mimeType: 'text/html',
         encoding: 'utf-8',
+        baseUrl: WebUri('https://www.youtube.com'),
       ),
       onWebViewCreated: (controller) {
         widget.controller.attachWebView(controller);
