@@ -8,7 +8,7 @@
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Android%20TV-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://www.android.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
-[![Release](https://img.shields.io/badge/Release-v1.2.4-brightgreen?style=for-the-badge)](https://github.com/TrDuy-pan3000/YT-Control/releases/latest)
+[![Release](https://img.shields.io/badge/Release-v1.2.5-brightgreen?style=for-the-badge)](https://github.com/TrDuy-pan3000/YT-Control/releases/latest)
 
 <br/>
 
@@ -16,13 +16,34 @@
 
 <br/>
 
-## ⬇️ Tải Xuống APK
+## ⬇️ Tải Xuống APK (v1.2.5)
 
-<a href="https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.2.4/yt_control_v1.2.4.apk">
-  <img src="https://img.shields.io/badge/📥%20Tải%20APK%20v1.2.4-53.1%20MB-FF5722?style=for-the-badge" alt="Download APK" height="50"/>
-</a>
+Tải xuống bản APK tối ưu nhất cho thiết bị của bạn:
 
-*Không cần tài khoản Google Play · Cài đặt trực tiếp qua APK*
+<table>
+  <tr>
+    <td align="center">
+      <b>Tivi Box / Tivi phổ thông</b><br/>(Kiến trúc 32-bit - armeabi-v7a)
+    </td>
+    <td align="center">
+      <b>Điện thoại / Tivi đời mới</b><br/>(Kiến trúc 64-bit - arm64-v8a)
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.2.5/yt_control_v1.2.5_armeabi-v7a.apk">
+        <img src="https://img.shields.io/badge/📥%20Tải%20APK%2032--bit-16.5%20MB-FF5722?style=for-the-badge" alt="Download armeabi-v7a APK" height="40"/>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.2.5/yt_control_v1.2.5_arm64-v8a.apk">
+        <img src="https://img.shields.io/badge/📥%20Tải%20APK%2064--bit-18.8%20MB-FF5722?style=for-the-badge" alt="Download arm64-v8a APK" height="40"/>
+      </a>
+    </td>
+  </tr>
+</table>
+
+*Không cần tài khoản Google Play · Bản build chia tách ABI giúp app siêu nhẹ (~15MB)*
 
 </div>
 
@@ -69,7 +90,8 @@
 - **Mạng**: Cả hai thiết bị **phải cùng mạng Wi-Fi** nội bộ
 
 ### Bước 1: Tải APK
-👉 **[Tải yt_control_v1.2.4.apk (v1.2.4 · 53.1 MB)](https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.2.4/yt_control_v1.2.4.apk)**
+👉 **[Tải APK v1.2.5 cho Tivi Box/Tivi (armeabi-v7a - 16.5 MB)](https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.2.5/yt_control_v1.2.5_armeabi-v7a.apk)**
+👉 **[Tải APK v1.2.5 cho Điện thoại Remote/Tivi mới (arm64-v8a - 18.8 MB)](https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.2.5/yt_control_v1.2.5_arm64-v8a.apk)**
 
 ### Bước 2: Cài APK lên Tivi
 ```
@@ -210,15 +232,18 @@ flutter run
 ```
 
 ### Build APK Release
+Để build ra các bản APK siêu nhẹ tương ứng cho từng kiến trúc CPU:
 ```bash
-flutter build apk --release
-# Output: build/app/outputs/flutter-apk/app-release.apk
+flutter build apk --release --split-per-abi
+# Output trong build/app/outputs/flutter-apk/:
+#  - app-armeabi-v7a-release.apk (~16.5MB)
+#  - app-arm64-v8a-release.apk (~18.8MB)
 ```
 
 ### Chạy Unit Tests
 ```bash
 flutter test
-# Kết quả: 7/7 tests passed ✅
+# Kết quả: 8/8 tests passed ✅
 ```
 
 ---
