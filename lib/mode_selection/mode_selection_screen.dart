@@ -152,7 +152,7 @@ class ModeSelectionScreen extends StatelessWidget {
       child: Container(
         width: 260,
         height: 200,
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

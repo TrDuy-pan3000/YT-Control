@@ -8,10 +8,11 @@ class TvPlayerController extends ChangeNotifier {
   TvPlayerState state = TvPlayerState.idle;
   String? currentVideoId;
   String? currentTitle;
-  double position = 0;   // Giây hiện tại
+  double position = 0;    // Giây hiện tại
   double duration = 0;    // Tổng thời lượng
+  int volume = 100;       // Âm lượng (0-100)
 
-  /// HTML template chứa YouTube IFrame Player API + Progress Sync
+  /// HTML template chứa YouTube IFrame Player API + Progress Sync + Volume Control
   String get playerHtml => '''
   <!DOCTYPE html>
   <html>
@@ -67,7 +68,6 @@ class TvPlayerController extends ChangeNotifier {
         window.flutter_inappwebview.callHandler("onStateChange", stateName);
 
         if (event.data === 0) {
-          // Video kết thúc → báo về Remote
           window.flutter_inappwebview.callHandler("onVideoEnded");
         }
       }
@@ -76,28 +76,52 @@ class TvPlayerController extends ChangeNotifier {
         window.flutter_inappwebview.callHandler("onVideoError", event.data);
       }
 
-      // PROGRESS SYNC — Mỗi 1 giây bắn position + duration về Dart
+      // PROGRESS SYNC — Mỗi 1 giây bắn position + duration + volume về Dart
       function startProgressSync() {
         if (syncInterval) clearInterval(syncInterval);
         syncInterval = setInterval(function() {
           if (player && player.getCurrentTime && player.getDuration) {
             var pos = player.getCurrentTime() || 0;
             var dur = player.getDuration() || 0;
-            window.flutter_inappwebview.callHandler("onProgressSync", pos, dur);
+            var vol = (player.getVolume) ? player.getVolume() : 100;
+            window.flutter_inappwebview.callHandler("onProgressSync", pos, dur, vol);
           }
         }, 1000);
       }
 
-      // Hàm được gọi từ Flutter (Dart → JS)
+      // ─── Hàm được gọi từ Flutter (Dart → JS) ───
       function loadVideo(videoId) {
         if (player && player.loadVideoById) {
           player.loadVideoById(videoId);
         }
       }
-      function pauseVideo()  { if (player && player.pauseVideo) player.pauseVideo(); }
-      function playVideo()   { if (player && player.playVideo) player.playVideo(); }
-      function seekForward(s)  { if (player && player.getCurrentTime && player.seekTo) player.seekTo(player.getCurrentTime() + s, true); }
-      function seekBackward(s) { if (player && player.getCurrentTime && player.seekTo) player.seekTo(Math.max(0, player.getCurrentTime() - s), true); }
+      function pauseVideo()   { if (player && player.pauseVideo) player.pauseVideo(); }
+      function playVideo()    { if (player && player.playVideo) player.playVideo(); }
+      function seekForward(s)  {
+        if (player && player.getCurrentTime && player.seekTo)
+          player.seekTo(player.getCurrentTime() + s, true);
+      }
+      function seekBackward(s) {
+        if (player && player.getCurrentTime && player.seekTo)
+          player.seekTo(Math.max(0, player.getCurrentTime() - s), true);
+      }
+      function setVolumeLevel(v) {
+        if (player && player.setVolume) {
+          player.setVolume(Math.max(0, Math.min(100, v)));
+        }
+      }
+      function volumeUpStep() {
+        if (player && player.getVolume && player.setVolume) {
+          var current = player.getVolume();
+          player.setVolume(Math.min(100, current + 10));
+        }
+      }
+      function volumeDownStep() {
+        if (player && player.getVolume && player.setVolume) {
+          var current = player.getVolume();
+          player.setVolume(Math.max(0, current - 10));
+        }
+      }
     </script>
   </body>
   </html>
@@ -107,7 +131,6 @@ class TvPlayerController extends ChangeNotifier {
   void attachWebView(InAppWebViewController controller) {
     _webController = controller;
 
-    // Đăng ký JS → Dart handlers
     controller.addJavaScriptHandler(
       handlerName: 'onPlayerReady',
       callback: (_) {
@@ -140,7 +163,10 @@ class TvPlayerController extends ChangeNotifier {
       callback: (args) {
         position = (args[0] as num).toDouble();
         duration = (args[1] as num).toDouble();
-        onProgressSync?.call(position, duration);
+        if (args.length >= 3) {
+          volume = (args[2] as num).toInt();
+        }
+        onProgressSync?.call(position, duration, volume);
       },
     );
 
@@ -180,18 +206,32 @@ class TvPlayerController extends ChangeNotifier {
     await _webController?.evaluateJavascript(source: "seekBackward($seconds)");
   }
 
+  Future<void> increaseVolume() async {
+    await _webController?.evaluateJavascript(source: "volumeUpStep()");
+  }
+
+  Future<void> decreaseVolume() async {
+    await _webController?.evaluateJavascript(source: "volumeDownStep()");
+  }
+
+  Future<void> setVolume(int level) async {
+    await _webController?.evaluateJavascript(
+        source: "setVolumeLevel($level)");
+  }
+
   TvPlayerState _mapState(String name) {
     switch (name) {
-      case 'playing': return TvPlayerState.playing;
-      case 'paused': return TvPlayerState.paused;
-      case 'ended': return TvPlayerState.ended;
+      case 'playing':   return TvPlayerState.playing;
+      case 'paused':    return TvPlayerState.paused;
+      case 'ended':     return TvPlayerState.ended;
       case 'buffering': return TvPlayerState.loading;
-      default: return TvPlayerState.idle;
+      default:          return TvPlayerState.idle;
     }
   }
 
   // === Callbacks ===
   VoidCallback? onVideoEnded;
-  Function(double position, double duration)? onProgressSync;
+  /// Callback trả về (position, duration, volume)
+  Function(double position, double duration, int volume)? onProgressSync;
   Function(String errorCode)? onVideoError;
 }

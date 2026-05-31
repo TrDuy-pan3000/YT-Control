@@ -31,6 +31,7 @@ class _RemoteControlScreenState extends State<RemoteControlScreen> with SingleTi
   double _position = 0;   // in seconds
   double _duration = 0;   // in seconds
   String _playerState = 'idle';
+  int _volume = 100;      // 0-100, synced từ TV
 
   @override
   void initState() {
@@ -72,15 +73,17 @@ class _RemoteControlScreenState extends State<RemoteControlScreen> with SingleTi
           break;
 
         case WsProtocol.playerState:
-          // Đồng bộ hóa thanh progress bar và thời gian realtime
+          // Đồng bộ hóa thanh progress bar, thời gian, và âm lượng realtime
           final posVal = msg.payload?['position'];
           final durVal = msg.payload?['duration'];
           final stateVal = msg.payload?['state'] as String?;
+          final volVal = msg.payload?['volume'];
 
           setState(() {
             _position = (posVal is num) ? posVal.toDouble() : 0.0;
             _duration = (durVal is num) ? durVal.toDouble() : 0.0;
             if (stateVal != null) _playerState = stateVal;
+            if (volVal is num) _volume = volVal.toInt();
           });
           break;
 
@@ -222,6 +225,33 @@ class _RemoteControlScreenState extends State<RemoteControlScreen> with SingleTi
     ));
   }
 
+  void _onVolumeUp() {
+    final wsClient = Provider.of<WsClientService>(context, listen: false);
+    wsClient.send(const WsMessage(
+      type: WsType.command,
+      action: WsProtocol.volumeUp,
+    ));
+  }
+
+  void _onVolumeDown() {
+    final wsClient = Provider.of<WsClientService>(context, listen: false);
+    wsClient.send(const WsMessage(
+      type: WsType.command,
+      action: WsProtocol.volumeDown,
+    ));
+  }
+
+  void _onVolumeChanged(double value) {
+    final wsClient = Provider.of<WsClientService>(context, listen: false);
+    final level = value.round();
+    setState(() => _volume = level);
+    wsClient.send(WsMessage(
+      type: WsType.command,
+      action: WsProtocol.setVolume,
+      payload: {'level': level},
+    ));
+  }
+
   void _onTapSongInQueue(int index) {
     final queueManager = Provider.of<QueueManager>(context, listen: false);
     final wsClient = Provider.of<WsClientService>(context, listen: false);
@@ -330,11 +360,15 @@ class _RemoteControlScreenState extends State<RemoteControlScreen> with SingleTi
                 isConnected: isClientConnected,
                 position: _position,
                 duration: _duration,
+                volume: _volume,
                 onPlayPause: _onPlayPause,
                 onNext: _onNext,
                 onPrevious: _onPrevious,
                 onSeekForward: _onSeekForward,
                 onSeekBackward: _onSeekBackward,
+                onVolumeUp: _onVolumeUp,
+                onVolumeDown: _onVolumeDown,
+                onVolumeChanged: _onVolumeChanged,
               ),
             ],
           ),

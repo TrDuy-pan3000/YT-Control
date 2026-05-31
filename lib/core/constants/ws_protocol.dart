@@ -10,6 +10,9 @@ abstract class WsProtocol {
   static const String seekForward = 'seek_forward';
   static const String seekBackward = 'seek_backward';
   static const String next = 'next';
+  static const String volumeUp = 'volume_up';
+  static const String volumeDown = 'volume_down';
+  static const String setVolume = 'set_volume';
 
   // Events (TV → Remote)
   static const String videoEnded = 'video_ended';

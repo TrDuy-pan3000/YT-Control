@@ -26,22 +26,22 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Bật Wake Lock giữ TV luôn sáng
     final wakelock = Provider.of<TvWakelockService>(context, listen: false);
     wakelock.enable();
 
-    // Nối dây logic giữa WebSocket Server và Player Controller
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeCommunication();
-    });
+    // Nối dây command handlers NGAY trong initState — không dùng postFrameCallback.
+    // Điều này đảm bảo onCommandReceived được set TRƯỚC KHI bất kỳ lệnh nào
+    // từ Remote có thể đến qua WebSocket (tránh race condition).
+    _initializeCommunication();
   }
 
   void _initializeCommunication() {
     final wsServer = Provider.of<WsServerService>(context, listen: false);
     final playerController = Provider.of<TvPlayerController>(context, listen: false);
 
-    // luồng COMMAND: Remote -> TV
+    // ─── Luồng COMMAND: Remote → TV ───
     wsServer.onCommandReceived = (msg) {
       switch (msg.action) {
         case WsProtocol.playNow:
@@ -53,20 +53,25 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
             _triggerNowPlayingOverlay(title, channelName);
           }
           break;
+
         case WsProtocol.pause:
           playerController.pause();
           break;
+
         case WsProtocol.resume:
           playerController.resume();
           break;
+
         case WsProtocol.seekForward:
           final sec = msg.payload?['seconds'] as int? ?? 10;
           playerController.seekForward(sec);
           break;
+
         case WsProtocol.seekBackward:
           final sec = msg.payload?['seconds'] as int? ?? 10;
           playerController.seekBackward(sec);
           break;
+
         case WsProtocol.next:
           final videoId = msg.payload?['videoId'] as String?;
           final title = msg.payload?['title'] as String?;
@@ -76,10 +81,25 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
             _triggerNowPlayingOverlay(title, channelName);
           }
           break;
+
+        case WsProtocol.volumeUp:
+          playerController.increaseVolume();
+          break;
+
+        case WsProtocol.volumeDown:
+          playerController.decreaseVolume();
+          break;
+
+        case WsProtocol.setVolume:
+          final level = msg.payload?['level'] as int?;
+          if (level != null) {
+            playerController.setVolume(level);
+          }
+          break;
       }
     };
 
-    // luồng EVENT: Player -> WebSocket -> Remote
+    // ─── Luồng EVENT: Player → WebSocket → Remote ───
     playerController.onVideoEnded = () {
       wsServer.sendToClient(const WsMessage(
         type: WsType.event,
@@ -95,8 +115,8 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
       ));
     };
 
-    // luồng SYNC: Player progress -> WebSocket -> Remote
-    playerController.onProgressSync = (position, duration) {
+    // ─── Luồng SYNC: Player progress + volume → WebSocket → Remote (mỗi 1s) ───
+    playerController.onProgressSync = (position, duration, volume) {
       wsServer.sendToClient(WsMessage(
         type: WsType.sync,
         action: WsProtocol.playerState,
@@ -104,11 +124,12 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
           'state': playerController.state.name,
           'position': position,
           'duration': duration,
+          'volume': volume,
         },
       ));
     };
 
-    // Luồng disconnect của Remote
+    // ─── Luồng disconnect của Remote ───
     wsServer.onClientDisconnected = () {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -142,7 +163,7 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
   @override
   void dispose() {
     _overlayTimer?.cancel();
-    
+
     // Tắt Wake Lock
     final wakelock = Provider.of<TvWakelockService>(context, listen: false);
     wakelock.disable();
@@ -186,17 +207,19 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
               ),
             ),
 
-          // Lớp phủ cảnh báo Remote ngắt kết nối (Nếu có)
+          // Lớp phủ cảnh báo Remote ngắt kết nối
           if (!wsServer.isClientConnected)
             Positioned(
               bottom: 24.0,
               right: 24.0,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 10.0),
                 decoration: BoxDecoration(
                   color: Colors.black87,
                   borderRadius: BorderRadius.circular(20.0),
-                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.5)),
+                  border: Border.all(
+                      color: AppColors.warning.withValues(alpha: 0.5)),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,

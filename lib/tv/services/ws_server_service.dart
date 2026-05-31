@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../../core/models/ws_message.dart';
@@ -8,8 +9,20 @@ class WsServerService extends ChangeNotifier {
   WebSocket? _client;
   bool _isRunning = false;
 
+  /// Stream riêng biệt để phát sự kiện kết nối/ngắt kết nối đáng tin cậy.
+  /// Tách khỏi notifyListeners() để tránh race condition với Navigator lifecycle.
+  final StreamController<bool> _connectionStreamController =
+      StreamController<bool>.broadcast();
+
+  /// Lắng nghe stream này thay vì addListener() để trigger navigation.
+  Stream<bool> get onClientConnectionChanged =>
+      _connectionStreamController.stream;
+
   bool get isRunning => _isRunning;
-  bool get isClientConnected => _client != null && _client!.readyState == WebSocket.open;
+
+  /// Kiểm tra đơn giản — chỉ cần _client != null.
+  /// Không dùng readyState vì có thể chưa cập nhật ngay trên một số TV.
+  bool get isClientConnected => _client != null;
 
   /// Khởi động server trên port 8080 (hoặc port fallback nếu trùng)
   Future<void> startServer({int port = WsProtocol.port}) async {
@@ -25,7 +38,7 @@ class WsServerService extends ChangeNotifier {
         currentPort++;
         retries++;
         if (retries >= 3) {
-          rethrow; // Ném lỗi nếu hết lượt thử
+          rethrow;
         }
       }
     }
@@ -36,7 +49,7 @@ class WsServerService extends ChangeNotifier {
     try {
       await for (HttpRequest request in _server!) {
         if (WebSocketTransformer.isUpgradeRequest(request)) {
-          if (_client != null && _client!.readyState == WebSocket.open) {
+          if (_client != null) {
             // Từ chối kết nối thứ 2 (chỉ cho 1 Remote kết nối)
             request.response
               ..statusCode = HttpStatus.forbidden
@@ -63,12 +76,13 @@ class WsServerService extends ChangeNotifier {
     _client = ws;
     notifyListeners();
 
-    // Gửi xác nhận kết nối thành công tới Remote
+    // Gửi xác nhận kết nối thành công tới Remote trước
     sendToClient(const WsMessage(
       type: WsType.event,
       action: WsProtocol.connected,
     ));
 
+    // Setup listener
     ws.listen(
       (data) {
         try {
@@ -82,17 +96,29 @@ class WsServerService extends ChangeNotifier {
       onError: (_) => _handleDisconnect(),
       cancelOnError: false,
     );
+
+    // Phát sự kiện kết nối SAU KHI setup listener hoàn toàn xong.
+    // Đây là điểm then chốt: stream event đến sau 1 microtask,
+    // đảm bảo WsPlayerScreen có đủ thời gian set onCommandReceived.
+    Future.microtask(() {
+      if (!_connectionStreamController.isClosed) {
+        _connectionStreamController.add(true);
+      }
+    });
   }
 
   void _handleDisconnect() {
     _client = null;
     notifyListeners();
+    if (!_connectionStreamController.isClosed) {
+      _connectionStreamController.add(false);
+    }
     onClientDisconnected?.call();
   }
 
   /// Gửi message đến Remote
   void sendToClient(WsMessage msg) {
-    if (_client != null && _client!.readyState == WebSocket.open) {
+    if (_client != null) {
       try {
         _client!.add(msg.encode());
       } catch (_) {
@@ -122,6 +148,7 @@ class WsServerService extends ChangeNotifier {
   @override
   void dispose() {
     stopServer();
+    _connectionStreamController.close();
     super.dispose();
   }
 }

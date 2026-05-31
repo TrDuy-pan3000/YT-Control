@@ -6,13 +6,17 @@ class PlaybackControls extends StatelessWidget {
   final Song? currentSong;
   final bool isPlaying;
   final bool isConnected;
-  final double position;   // in seconds
-  final double duration;   // in seconds
+  final double position;    // in seconds
+  final double duration;    // in seconds
+  final int volume;         // 0-100
   final VoidCallback onPlayPause;
   final VoidCallback onNext;
   final VoidCallback onPrevious;
   final VoidCallback onSeekForward;
   final VoidCallback onSeekBackward;
+  final VoidCallback onVolumeUp;
+  final VoidCallback onVolumeDown;
+  final ValueChanged<double> onVolumeChanged;
 
   const PlaybackControls({
     Key? key,
@@ -21,11 +25,15 @@ class PlaybackControls extends StatelessWidget {
     required this.isConnected,
     required this.position,
     required this.duration,
+    required this.volume,
     required this.onPlayPause,
     required this.onNext,
     required this.onPrevious,
     required this.onSeekForward,
     required this.onSeekBackward,
+    required this.onVolumeUp,
+    required this.onVolumeDown,
+    required this.onVolumeChanged,
   }) : super(key: key);
 
   String _formatTime(double seconds) {
@@ -33,10 +41,7 @@ class PlaybackControls extends StatelessWidget {
     final int sec = seconds.round();
     final int min = sec ~/ 60;
     final int remainingSec = sec % 60;
-    
-    final minStr = min.toString().padLeft(2, '0');
-    final secStr = remainingSec.toString().padLeft(2, '0');
-    return '$minStr:$secStr';
+    return '${min.toString().padLeft(2, '0')}:${remainingSec.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -45,7 +50,7 @@ class PlaybackControls extends StatelessWidget {
     final double progress = (duration > 0) ? (position / duration) : 0.0;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 28.0),
+      padding: const EdgeInsets.fromLTRB(20.0, 14.0, 20.0, 24.0),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
@@ -67,14 +72,14 @@ class PlaybackControls extends StatelessWidget {
               currentSong?.title ?? 'Chưa phát bài hát nào',
               style: const TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: 16.0,
+                fontSize: 15.0,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4.0),
+            const SizedBox(height: 3.0),
             Text(
               currentSong?.channelName ?? 'Đang chờ kết nối Tivi...',
               style: const TextStyle(
@@ -85,9 +90,94 @@ class PlaybackControls extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 16.0),
-            
-            // Progress Bar
+            const SizedBox(height: 12.0),
+
+            // ─── Volume Control Row ───
+            Row(
+              children: [
+                // Volume icon + giá trị
+                GestureDetector(
+                  onTap: active ? onVolumeDown : null,
+                  child: Container(
+                    padding: const EdgeInsets.all(6.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    child: Icon(
+                      volume == 0
+                          ? Icons.volume_off
+                          : volume < 50
+                              ? Icons.volume_down
+                              : Icons.volume_up,
+                      color: active
+                          ? AppColors.accent
+                          : AppColors.textMuted,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+
+                // Slider âm lượng
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      thumbShape:
+                          const RoundSliderThumbShape(enabledThumbRadius: 7.0),
+                      overlayShape:
+                          const RoundSliderOverlayShape(overlayRadius: 14.0),
+                      trackHeight: 4.0,
+                      activeTrackColor: AppColors.accent,
+                      inactiveTrackColor: AppColors.surfaceLight,
+                      thumbColor: AppColors.accent,
+                      overlayColor: AppColors.accent.withValues(alpha: 0.2),
+                    ),
+                    child: Slider(
+                      value: volume.toDouble().clamp(0.0, 100.0),
+                      min: 0,
+                      max: 100,
+                      divisions: 10,
+                      onChanged: active ? onVolumeChanged : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+
+                // Nút Volume Up + hiện %
+                GestureDetector(
+                  onTap: active ? onVolumeUp : null,
+                  child: Container(
+                    padding: const EdgeInsets.all(6.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    child: const Icon(
+                      Icons.add,
+                      color: AppColors.accent,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6.0),
+                SizedBox(
+                  width: 36,
+                  child: Text(
+                    '$volume%',
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 11.0,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10.0),
+
+            // ─── Progress Bar ───
             Column(
               children: [
                 ClipRRect(
@@ -95,54 +185,58 @@ class PlaybackControls extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: progress.clamp(0.0, 1.0),
                     backgroundColor: AppColors.surfaceLight,
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
-                    minHeight: 6,
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    minHeight: 5,
                   ),
                 ),
-                const SizedBox(height: 8.0),
+                const SizedBox(height: 6.0),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       _formatTime(position),
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12.0),
+                      style: const TextStyle(
+                          color: AppColors.textMuted, fontSize: 11.0),
                     ),
                     Text(
                       _formatTime(duration),
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12.0),
+                      style: const TextStyle(
+                          color: AppColors.textMuted, fontSize: 11.0),
                     ),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 12.0),
+            const SizedBox(height: 10.0),
 
-            // Controls
+            // ─── Playback Controls ───
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Skip Previous
                 IconButton(
-                  icon: const Icon(Icons.skip_previous, size: 28, color: AppColors.textPrimary),
+                  icon: const Icon(Icons.skip_previous,
+                      size: 28, color: AppColors.textPrimary),
                   onPressed: active ? onPrevious : null,
                   splashRadius: 24,
                 ),
-                
-                // Rewind 10s
                 IconButton(
-                  icon: const Icon(Icons.replay_10, size: 28, color: AppColors.textPrimary),
+                  icon: const Icon(Icons.replay_10,
+                      size: 28, color: AppColors.textPrimary),
                   onPressed: active ? onSeekBackward : null,
                   splashRadius: 24,
                 ),
 
-                // Large Play/Pause
+                // Large Play/Pause button
                 GestureDetector(
                   onTap: active ? onPlayPause : null,
                   child: Container(
                     width: 64,
                     height: 64,
                     decoration: BoxDecoration(
-                      color: active ? AppColors.primary : AppColors.surfaceLight,
+                      color: active
+                          ? AppColors.primary
+                          : AppColors.surfaceLight,
                       shape: BoxShape.circle,
                       boxShadow: active
                           ? [
@@ -162,16 +256,15 @@ class PlaybackControls extends StatelessWidget {
                   ),
                 ),
 
-                // Fast Forward 10s
                 IconButton(
-                  icon: const Icon(Icons.forward_10, size: 28, color: AppColors.textPrimary),
+                  icon: const Icon(Icons.forward_10,
+                      size: 28, color: AppColors.textPrimary),
                   onPressed: active ? onSeekForward : null,
                   splashRadius: 24,
                 ),
-
-                // Skip Next
                 IconButton(
-                  icon: const Icon(Icons.skip_next, size: 28, color: AppColors.textPrimary),
+                  icon: const Icon(Icons.skip_next,
+                      size: 28, color: AppColors.textPrimary),
                   onPressed: active ? onNext : null,
                   splashRadius: 24,
                 ),
