@@ -252,6 +252,15 @@ class _RemoteControlScreenState extends State<RemoteControlScreen> with SingleTi
     ));
   }
 
+  void _onSeekTo(double val) {
+    final wsClient = Provider.of<WsClientService>(context, listen: false);
+    wsClient.send(WsMessage(
+      type: WsType.command,
+      action: WsProtocol.seekTo,
+      payload: {'seconds': val},
+    ));
+  }
+
   void _onTapSongInQueue(int index) {
     final queueManager = Provider.of<QueueManager>(context, listen: false);
     final wsClient = Provider.of<WsClientService>(context, listen: false);
@@ -369,6 +378,7 @@ class _RemoteControlScreenState extends State<RemoteControlScreen> with SingleTi
                 onVolumeUp: _onVolumeUp,
                 onVolumeDown: _onVolumeDown,
                 onVolumeChanged: _onVolumeChanged,
+                onSeekTo: _onSeekTo,
               ),
             ],
           ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/song.dart';
 
-class PlaybackControls extends StatelessWidget {
+class PlaybackControls extends StatefulWidget {
   final Song? currentSong;
   final bool isPlaying;
   final bool isConnected;
@@ -17,6 +17,7 @@ class PlaybackControls extends StatelessWidget {
   final VoidCallback onVolumeUp;
   final VoidCallback onVolumeDown;
   final ValueChanged<double> onVolumeChanged;
+  final ValueChanged<double>? onSeekTo;
 
   const PlaybackControls({
     Key? key,
@@ -34,7 +35,16 @@ class PlaybackControls extends StatelessWidget {
     required this.onVolumeUp,
     required this.onVolumeDown,
     required this.onVolumeChanged,
+    this.onSeekTo,
   }) : super(key: key);
+
+  @override
+  State<PlaybackControls> createState() => _PlaybackControlsState();
+}
+
+class _PlaybackControlsState extends State<PlaybackControls> {
+  bool _isDragging = false;
+  double _dragValue = 0.0;
 
   String _formatTime(double seconds) {
     if (seconds.isNaN || seconds.isInfinite) return '00:00';
@@ -46,8 +56,12 @@ class PlaybackControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool active = isConnected && currentSong != null;
-    final double progress = (duration > 0) ? (position / duration) : 0.0;
+    final bool active = widget.isConnected && widget.currentSong != null;
+    final double duration = widget.duration;
+    
+    // Lấy giá trị trượt cục bộ khi kéo thả, nếu không lấy giá trị đồng bộ từ TV
+    final double displayPos = _isDragging ? _dragValue : widget.position;
+    final double clampedPos = displayPos.clamp(0.0, duration > 0 ? duration : 0.0);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20.0, 14.0, 20.0, 24.0),
@@ -69,7 +83,7 @@ class PlaybackControls extends StatelessWidget {
           children: [
             // Track Info
             Text(
-              currentSong?.title ?? 'Chưa phát bài hát nào',
+              widget.currentSong?.title ?? 'Chưa phát bài hát nào',
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 15.0,
@@ -81,7 +95,7 @@ class PlaybackControls extends StatelessWidget {
             ),
             const SizedBox(height: 3.0),
             Text(
-              currentSong?.channelName ?? 'Đang chờ kết nối Tivi...',
+              widget.currentSong?.channelName ?? 'Đang chờ kết nối Tivi...',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 12.0,
@@ -97,7 +111,7 @@ class PlaybackControls extends StatelessWidget {
               children: [
                 // Volume icon + giá trị
                 GestureDetector(
-                  onTap: active ? onVolumeDown : null,
+                  onTap: active ? widget.onVolumeDown : null,
                   child: Container(
                     padding: const EdgeInsets.all(6.0),
                     decoration: BoxDecoration(
@@ -105,9 +119,9 @@ class PlaybackControls extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                     child: Icon(
-                      volume == 0
+                      widget.volume == 0
                           ? Icons.volume_off
-                          : volume < 50
+                          : widget.volume < 50
                               ? Icons.volume_down
                               : Icons.volume_up,
                       color: active
@@ -134,11 +148,11 @@ class PlaybackControls extends StatelessWidget {
                       overlayColor: AppColors.accent.withValues(alpha: 0.2),
                     ),
                     child: Slider(
-                      value: volume.toDouble().clamp(0.0, 100.0),
+                      value: widget.volume.toDouble().clamp(0.0, 100.0),
                       min: 0,
                       max: 100,
                       divisions: 10,
-                      onChanged: active ? onVolumeChanged : null,
+                      onChanged: active ? widget.onVolumeChanged : null,
                     ),
                   ),
                 ),
@@ -146,7 +160,7 @@ class PlaybackControls extends StatelessWidget {
 
                 // Nút Volume Up + hiện %
                 GestureDetector(
-                  onTap: active ? onVolumeUp : null,
+                  onTap: active ? widget.onVolumeUp : null,
                   child: Container(
                     padding: const EdgeInsets.all(6.0),
                     decoration: BoxDecoration(
@@ -164,7 +178,7 @@ class PlaybackControls extends StatelessWidget {
                 SizedBox(
                   width: 36,
                   child: Text(
-                    '$volume%',
+                    '${widget.volume}%',
                     style: const TextStyle(
                       color: AppColors.textMuted,
                       fontSize: 11.0,
@@ -177,25 +191,47 @@ class PlaybackControls extends StatelessWidget {
             ),
             const SizedBox(height: 10.0),
 
-            // ─── Progress Bar ───
+            // ─── Progress Bar (Interactive Slider) ───
             Column(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4.0),
-                  child: LinearProgressIndicator(
-                    value: progress.clamp(0.0, 1.0),
-                    backgroundColor: AppColors.surfaceLight,
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                    minHeight: 5,
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12.0),
+                    trackHeight: 4.0,
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: AppColors.surfaceLight,
+                    thumbColor: AppColors.primaryLight,
+                    overlayColor: AppColors.primary.withValues(alpha: 0.2),
+                  ),
+                  child: Slider(
+                    value: clampedPos,
+                    min: 0.0,
+                    max: duration > 0 ? duration : 0.0,
+                    onChanged: active
+                        ? (val) {
+                            setState(() {
+                              _isDragging = true;
+                              _dragValue = val;
+                            });
+                          }
+                        : null,
+                    onChangeEnd: active
+                        ? (val) {
+                            widget.onSeekTo?.call(val);
+                            setState(() {
+                              _isDragging = false;
+                            });
+                          }
+                        : null,
                   ),
                 ),
-                const SizedBox(height: 6.0),
+                const SizedBox(height: 2.0),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      _formatTime(position),
+                      _formatTime(clampedPos),
                       style: const TextStyle(
                           color: AppColors.textMuted, fontSize: 11.0),
                     ),
@@ -217,19 +253,19 @@ class PlaybackControls extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.skip_previous,
                       size: 28, color: AppColors.textPrimary),
-                  onPressed: active ? onPrevious : null,
+                  onPressed: active ? widget.onPrevious : null,
                   splashRadius: 24,
                 ),
                 IconButton(
                   icon: const Icon(Icons.replay_10,
                       size: 28, color: AppColors.textPrimary),
-                  onPressed: active ? onSeekBackward : null,
+                  onPressed: active ? widget.onSeekBackward : null,
                   splashRadius: 24,
                 ),
 
                 // Large Play/Pause button
                 GestureDetector(
-                  onTap: active ? onPlayPause : null,
+                  onTap: active ? widget.onPlayPause : null,
                   child: Container(
                     width: 64,
                     height: 64,
@@ -249,7 +285,7 @@ class PlaybackControls extends StatelessWidget {
                           : [],
                     ),
                     child: Icon(
-                      isPlaying ? Icons.pause : Icons.play_arrow,
+                      widget.isPlaying ? Icons.pause : Icons.play_arrow,
                       size: 36,
                       color: Colors.white,
                     ),
@@ -259,13 +295,13 @@ class PlaybackControls extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.forward_10,
                       size: 28, color: AppColors.textPrimary),
-                  onPressed: active ? onSeekForward : null,
+                  onPressed: active ? widget.onSeekForward : null,
                   splashRadius: 24,
                 ),
                 IconButton(
                   icon: const Icon(Icons.skip_next,
                       size: 28, color: AppColors.textPrimary),
-                  onPressed: active ? onNext : null,
+                  onPressed: active ? widget.onNext : null,
                   splashRadius: 24,
                 ),
               ],

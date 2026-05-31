@@ -60,12 +60,11 @@ class WsServerService extends ChangeNotifier {
         try {
           if (WebSocketTransformer.isUpgradeRequest(request)) {
             if (_client != null) {
-              // Từ chối kết nối thứ 2 (chỉ cho 1 Remote kết nối)
-              request.response
-                ..statusCode = HttpStatus.forbidden
-                ..write('Only one remote allowed')
-                ..close();
-              continue;
+              debugPrint('A new remote is connecting. Preempting existing connection.');
+              try {
+                _client!.close();
+              } catch (_) {}
+              _client = null;
             }
 
             final ws = await WebSocketTransformer.upgrade(request);
@@ -130,6 +129,9 @@ class WsServerService extends ChangeNotifier {
   }
 
   void _handleDisconnect() {
+    try {
+      _client?.close();
+    } catch (_) {}
     _client = null;
     notifyListeners();
     if (!_connectionStreamController.isClosed) {

@@ -106,6 +106,11 @@ class TvPlayerController extends ChangeNotifier {
         if (player && player.getCurrentTime && player.seekTo)
           player.seekTo(Math.max(0, player.getCurrentTime() - s), true);
       }
+      function seekToSeconds(seconds) {
+        if (player && player.seekTo) {
+          player.seekTo(seconds, true);
+        }
+      }
       function setVolumeLevel(v) {
         if (player && player.setVolume) {
           player.setVolume(Math.max(0, Math.min(100, v)));
@@ -205,6 +210,10 @@ class TvPlayerController extends ChangeNotifier {
 
   Future<void> seekBackward([int seconds = 10]) async {
     await _webController?.evaluateJavascript(source: "seekBackward($seconds)");
+  }
+
+  Future<void> seekTo(double seconds) async {
+    await _webController?.evaluateJavascript(source: "seekToSeconds($seconds)");
   }
 
   Future<void> increaseVolume() async {

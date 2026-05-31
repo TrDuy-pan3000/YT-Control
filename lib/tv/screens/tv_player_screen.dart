@@ -9,7 +9,6 @@ import '../services/tv_player_controller.dart';
 import '../services/tv_wakelock_service.dart';
 import '../widgets/tv_player_widget.dart';
 import '../../tv/widgets/tv_now_playing_overlay.dart';
-import 'tv_waiting_screen.dart';
 
 class TvPlayerScreen extends StatefulWidget {
   const TvPlayerScreen({Key? key}) : super(key: key);
@@ -69,6 +68,13 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
         case WsProtocol.seekBackward:
           final sec = msg.payload?['seconds'] as int? ?? 10;
           playerController.seekBackward(sec);
+          break;
+
+        case WsProtocol.seekTo:
+          final seconds = msg.payload?['seconds'] as num?;
+          if (seconds != null) {
+            playerController.seekTo(seconds.toDouble());
+          }
           break;
 
         case WsProtocol.next:
@@ -182,10 +188,7 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final wsServer = Provider.of<WsServerService>(context);
     final playerController = Provider.of<TvPlayerController>(context);
-
-    final isConnected = wsServer.isClientConnected;
 
     return Scaffold(
       backgroundColor: Colors.black,
