@@ -20,6 +20,10 @@ class _TvPlayerWidgetState extends State<TvPlayerWidget> {
         allowsInlineMediaPlayback: true,
         useWideViewPort: true,
         supportZoom: false,
+        domStorageEnabled: true,
+        databaseEnabled: true,
+        mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
       ),
       initialData: InAppWebViewInitialData(
         data: widget.controller.playerHtml,
