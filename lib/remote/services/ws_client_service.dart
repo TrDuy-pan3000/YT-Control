@@ -19,6 +19,7 @@ class WsClientService extends ChangeNotifier {
   bool get isConnected => connectionState == WsConnectionState.connected;
   int get retryCount => _retryCount;
   int get maxRetries => _maxRetries;
+  String? get lastIp => _lastIp;
 
   /// Kết nối đến TV
   Future<bool> connect(String tvIp, {int port = WsProtocol.port}) async {

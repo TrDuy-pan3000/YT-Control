@@ -47,26 +47,40 @@ class WsServerService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await for (HttpRequest request in _server!) {
-        if (WebSocketTransformer.isUpgradeRequest(request)) {
-          if (_client != null) {
-            // Từ chối kết nối thứ 2 (chỉ cho 1 Remote kết nối)
-            request.response
-              ..statusCode = HttpStatus.forbidden
-              ..write('Only one remote allowed')
-              ..close();
-            continue;
-          }
+      // Dùng handleError để bắt các lỗi kết nối ở cấp độ Stream (như quét mạng TCP ping)
+      // tránh làm sập và thoát khỏi vòng lặp lắng nghe của Server.
+      final secureStream = _server!.handleError((error) {
+        debugPrint('WS Server stream error: $error');
+      });
 
-          final ws = await WebSocketTransformer.upgrade(request);
-          _acceptClient(ws);
-        } else {
-          request.response
-            ..statusCode = HttpStatus.notFound
-            ..close();
+      await for (HttpRequest request in secureStream) {
+        try {
+          if (WebSocketTransformer.isUpgradeRequest(request)) {
+            if (_client != null) {
+              // Từ chối kết nối thứ 2 (chỉ cho 1 Remote kết nối)
+              request.response
+                ..statusCode = HttpStatus.forbidden
+                ..write('Only one remote allowed')
+                ..close();
+              continue;
+            }
+
+            final ws = await WebSocketTransformer.upgrade(request);
+            _acceptClient(ws);
+          } else {
+            request.response
+              ..statusCode = HttpStatus.notFound
+              ..close();
+          }
+        } catch (e) {
+          debugPrint('WS Server request error: $e');
+          try {
+            request.response.close();
+          } catch (_) {}
         }
       }
     } catch (e) {
+      debugPrint('WS Server fatal error: $e');
       _isRunning = false;
       notifyListeners();
     }

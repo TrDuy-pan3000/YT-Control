@@ -374,8 +374,7 @@ class _RemoteControlScreenState extends State<RemoteControlScreen> with SingleTi
           ),
 
           // Lớp phủ khi mất kết nối WebSocket
-          if (wsClient.connectionState == WsConnectionState.disconnected || 
-              wsClient.connectionState == WsConnectionState.connecting)
+          if (wsClient.connectionState != WsConnectionState.connected)
             Positioned.fill(
               child: Container(
                 color: Colors.black.withValues(alpha: 0.85),
@@ -396,24 +395,45 @@ class _RemoteControlScreenState extends State<RemoteControlScreen> with SingleTi
                         Text(
                           wsClient.connectionState == WsConnectionState.connecting
                               ? 'Đang kết nối lại...'
-                              : 'Đang tự động thử lại kết nối (${wsClient.retryCount}/${wsClient.maxRetries})...',
+                              : wsClient.connectionState == WsConnectionState.error
+                                  ? 'Kết nối thất bại sau ${wsClient.maxRetries} lần thử tự động.'
+                                  : 'Đang tự động thử lại kết nối (${wsClient.retryCount}/${wsClient.maxRetries})...',
                           style: const TextStyle(color: AppColors.textSecondary, fontSize: 13.0),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 32.0),
-                        // Nút thoát về màn kết nối thủ công
-                        OutlinedButton(
-                          onPressed: () {
-                            wsClient.disconnect();
-                            Navigator.pop(context);
-                          },
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.surfaceLight),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
-                          ),
-                          child: const Text('Quay lại màn kết nối'),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            OutlinedButton(
+                              onPressed: () {
+                                wsClient.disconnect();
+                                Navigator.pop(context);
+                              },
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: AppColors.surfaceLight),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+                              ),
+                              child: const Text('Màn hình kết nối'),
+                            ),
+                            if (wsClient.connectionState == WsConnectionState.error && wsClient.lastIp != null) ...[
+                              const SizedBox(width: 16.0),
+                              ElevatedButton(
+                                onPressed: () {
+                                  wsClient.connect(wsClient.lastIp!);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+                                ),
+                                child: const Text('Thử lại ngay'),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
