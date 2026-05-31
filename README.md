@@ -8,7 +8,7 @@
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Android%20TV-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://www.android.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
-[![Release](https://img.shields.io/badge/Release-v1.0.0-brightgreen?style=for-the-badge)](https://github.com/TrDuy-pan3000/YT-Control/releases/latest)
+[![Release](https://img.shields.io/badge/Release-v1.1.0-brightgreen?style=for-the-badge)](https://github.com/TrDuy-pan3000/YT-Control/releases/latest)
 
 <br/>
 
@@ -18,8 +18,8 @@
 
 ## ⬇️ Tải Xuống APK
 
-<a href="https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.0.0/app-release.apk">
-  <img src="https://img.shields.io/badge/📥%20Tải%20APK%20v1.0.0-52.7%20MB-FF5722?style=for-the-badge" alt="Download APK" height="50"/>
+<a href="https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.1.0/app-release.apk">
+  <img src="https://img.shields.io/badge/📥%20Tải%20APK%20v1.1.0-53.1%20MB-FF5722?style=for-the-badge" alt="Download APK" height="50"/>
 </a>
 
 *Không cần tài khoản Google Play · Cài đặt trực tiếp qua APK*
@@ -69,7 +69,7 @@
 - **Mạng**: Cả hai thiết bị **phải cùng mạng Wi-Fi** nội bộ
 
 ### Bước 1: Tải APK
-👉 **[Tải app-release.apk (v1.0.0 · 52.7 MB)](https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.0.0/app-release.apk)**
+👉 **[Tải app-release.apk (v1.1.0 · 53.1 MB)](https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.1.0/app-release.apk)**
 
 ### Bước 2: Cài APK lên Tivi
 ```
@@ -160,10 +160,13 @@ Mọi liên lạc giữa Tivi và Điện thoại sử dụng **JSON qua WebSock
 | 4 | 📱→📺 | `COMMAND` | `seek_forward` | `{seconds: 10}` | Tua tới 10s |
 | 5 | 📱→📺 | `COMMAND` | `seek_backward` | `{seconds: 10}` | Tua lùi 10s |
 | 6 | 📱→📺 | `COMMAND` | `next` | `{videoId, title}` | Chuyển bài tiếp |
-| 7 | 📺→📱 | `EVENT` | `video_ended` | — | Video đã kết thúc |
-| 8 | 📺→📱 | `EVENT` | `video_error` | `{code, message}` | Lỗi phát video |
-| 9 | 📺→📱 | `EVENT` | `connected` | — | Kết nối thành công |
-| 10 | 📺→📱 | `SYNC` | `player_state` | `{state, position, duration}` | Đồng bộ mỗi 1s |
+| 7 | 📱→📺 | `COMMAND` | `volume_up` | — | Tăng âm lượng TV |
+| 8 | 📱→📺 | `COMMAND` | `volume_down` | — | Giảm âm lượng TV |
+| 9 | 📱→📺 | `COMMAND` | `set_volume` | `{level: int (0-100)}` | Đặt âm lượng TV |
+| 10 | 📺→📱 | `EVENT` | `video_ended` | — | Video đã kết thúc |
+| 11 | 📺→📱 | `EVENT` | `video_error` | `{code, message}` | Lỗi phát video |
+| 12 | 📺→📱 | `EVENT` | `connected` | — | Kết nối thành công |
+| 13 | 📺→📱 | `SYNC` | `player_state` | `{state, position, duration, volume}` | Đồng bộ mỗi 1s |
 
 ---
 
