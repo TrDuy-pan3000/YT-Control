@@ -13,7 +13,7 @@ class TvPlayerController extends ChangeNotifier {
   int volume = 100;       // Âm lượng (0-100)
 
   /// HTML template chứa YouTube IFrame Player API + Progress Sync + Volume Control
-  String get playerHtml => '''
+  static String get playerHtml => '''
   <!DOCTYPE html>
   <html>
   <head>

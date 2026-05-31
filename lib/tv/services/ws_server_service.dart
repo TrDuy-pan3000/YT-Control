@@ -3,11 +3,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../../core/models/ws_message.dart';
 import '../../core/constants/ws_protocol.dart';
+import 'tv_player_controller.dart';
 
 class WsServerService extends ChangeNotifier {
   HttpServer? _server;
   WebSocket? _client;
   bool _isRunning = false;
+
+  int get serverPort => _server?.port ?? WsProtocol.port;
 
   /// Stream riêng biệt để phát sự kiện kết nối/ngắt kết nối đáng tin cậy.
   /// Tách khỏi notifyListeners() để tránh race condition với Navigator lifecycle.
@@ -67,6 +70,11 @@ class WsServerService extends ChangeNotifier {
 
             final ws = await WebSocketTransformer.upgrade(request);
             _acceptClient(ws);
+          } else if (request.uri.path == '/player') {
+            request.response
+              ..headers.contentType = ContentType.html
+              ..write(TvPlayerController.playerHtml)
+              ..close();
           } else {
             request.response
               ..statusCode = HttpStatus.notFound

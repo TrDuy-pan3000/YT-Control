@@ -208,31 +208,7 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
               ),
             ),
 
-          // Lớp phủ cảnh báo nhỏ gọn ở góc dưới bên phải khi mất kết nối (Không chặn video)
-          if (!isConnected)
-            Positioned(
-              bottom: 24.0,
-              right: 24.0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-                decoration: BoxDecoration(
-                  color: Colors.black87,
-                  borderRadius: BorderRadius.circular(20.0),
-                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.5)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.wifi_off, color: AppColors.warning, size: 16),
-                    SizedBox(width: 8.0),
-                    Text(
-                      'Đang chờ thiết bị điều khiển kết nối lại...',
-                      style: TextStyle(color: Colors.white, fontSize: 12.0),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+
         ],
       ),
     );

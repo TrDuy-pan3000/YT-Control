@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:provider/provider.dart';
 import '../services/tv_player_controller.dart';
+import '../services/ws_server_service.dart';
 
 class TvPlayerWidget extends StatefulWidget {
   final TvPlayerController controller;
@@ -13,6 +15,9 @@ class TvPlayerWidget extends StatefulWidget {
 class _TvPlayerWidgetState extends State<TvPlayerWidget> {
   @override
   Widget build(BuildContext context) {
+    final wsServer = Provider.of<WsServerService>(context, listen: false);
+    final serverPort = wsServer.serverPort;
+
     return InAppWebView(
       initialSettings: InAppWebViewSettings(
         mediaPlaybackRequiresUserGesture: false,  // Tắt chặn autoplay trên Android TV
@@ -25,11 +30,8 @@ class _TvPlayerWidgetState extends State<TvPlayerWidget> {
         mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
       ),
-      initialData: InAppWebViewInitialData(
-        data: widget.controller.playerHtml,
-        mimeType: 'text/html',
-        encoding: 'utf-8',
-        baseUrl: WebUri('https://www.youtube.com'),
+      initialUrlRequest: URLRequest(
+        url: WebUri('http://127.0.0.1:$serverPort/player'),
       ),
       onWebViewCreated: (controller) {
         widget.controller.attachWebView(controller);
