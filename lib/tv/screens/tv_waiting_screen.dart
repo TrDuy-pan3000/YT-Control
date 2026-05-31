@@ -25,6 +25,7 @@ class _TvWaitingScreenState extends State<TvWaitingScreen>
 
   /// StreamSubscription thay thế cho addListener() — tránh race condition.
   StreamSubscription<bool>? _connectionSub;
+  bool _navigated = false;
 
   @override
   void initState() {
@@ -37,6 +38,15 @@ class _TvWaitingScreenState extends State<TvWaitingScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupServerAndDiscovery();
     });
+  }
+
+  void _navigateToPlayer() {
+    if (_navigated || !mounted) return;
+    _navigated = true;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const TvPlayerScreen()),
+    );
   }
 
   Future<void> _setupServerAndDiscovery() async {
@@ -52,7 +62,15 @@ class _TvWaitingScreenState extends State<TvWaitingScreen>
       });
     }
 
-    // 2. Khởi động WebSocket Server
+    // 2. Lắng nghe sự kiện kết nối qua Stream TRƯỚC KHI khởi động server.
+    // Việc này đảm bảo nếu Remote kết nối cực nhanh, ta cũng không bị hụt sự kiện.
+    _connectionSub = wsServer.onClientConnectionChanged.listen((connected) {
+      if (connected) {
+        _navigateToPlayer();
+      }
+    });
+
+    // 3. Khởi động WebSocket Server
     try {
       await wsServer.startServer();
     } catch (e) {
@@ -66,22 +84,15 @@ class _TvWaitingScreenState extends State<TvWaitingScreen>
       }
     }
 
-    // 3. Đăng ký mDNS
+    // 4. Kiểm tra dự phòng nếu Client đã kết nối trước/trong lúc server start
+    if (wsServer.isClientConnected) {
+      _navigateToPlayer();
+    }
+
+    // 5. Đăng ký mDNS để quảng bá dịch vụ
     if (wsServer.isRunning) {
       await _mdnsAdvertiser.registerService();
     }
-
-    // 4. Lắng nghe sự kiện kết nối qua Stream — KHÔNG dùng addListener().
-    // Stream event đến sau Future.microtask() nên TvPlayerScreen đã sẵn sàng
-    // set onCommandReceived trước khi bất kỳ lệnh nào có thể tới.
-    _connectionSub = wsServer.onClientConnectionChanged.listen((connected) {
-      if (connected && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const TvPlayerScreen()),
-        );
-      }
-    });
   }
 
   @override

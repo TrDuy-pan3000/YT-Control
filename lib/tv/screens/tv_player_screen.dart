@@ -9,6 +9,7 @@ import '../services/tv_player_controller.dart';
 import '../services/tv_wakelock_service.dart';
 import '../widgets/tv_player_widget.dart';
 import '../../tv/widgets/tv_now_playing_overlay.dart';
+import 'tv_waiting_screen.dart';
 
 class TvPlayerScreen extends StatefulWidget {
   const TvPlayerScreen({Key? key}) : super(key: key);
@@ -19,9 +20,13 @@ class TvPlayerScreen extends StatefulWidget {
 
 class _TvPlayerScreenState extends State<TvPlayerScreen> {
   Timer? _overlayTimer;
+  Timer? _disconnectTimer;
+  StreamSubscription<bool>? _connectionSub;
+  
   bool _showNowPlaying = false;
   String _songTitle = '';
   String _channelName = '';
+  int _disconnectCountdown = 15;
 
   @override
   void initState() {
@@ -31,15 +36,73 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
     final wakelock = Provider.of<TvWakelockService>(context, listen: false);
     wakelock.enable();
 
-    // Nối dây command handlers NGAY trong initState — không dùng postFrameCallback.
-    // Điều này đảm bảo onCommandReceived được set TRƯỚC KHI bất kỳ lệnh nào
-    // từ Remote có thể đến qua WebSocket (tránh race condition).
+    // Nối dây command handlers
     _initializeCommunication();
+  }
+
+  void _startDisconnectTimer() {
+    _disconnectTimer?.cancel();
+    setState(() {
+      _disconnectCountdown = 15;
+    });
+
+    _disconnectTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          if (_disconnectCountdown > 1) {
+            _disconnectCountdown--;
+          } else {
+            _disconnectTimer?.cancel();
+            _exitToWaitingScreen();
+          }
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  void _cancelDisconnectTimer() {
+    _disconnectTimer?.cancel();
+    _disconnectTimer = null;
+    if (mounted) {
+      setState(() {
+        _disconnectCountdown = 15;
+      });
+    }
+  }
+
+  void _exitToWaitingScreen() {
+    if (!mounted) return;
+    // Tạm dừng video trước khi thoát
+    final playerController = Provider.of<TvPlayerController>(context, listen: false);
+    try {
+      playerController.pause();
+    } catch (_) {}
+    
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const TvWaitingScreen()),
+    );
   }
 
   void _initializeCommunication() {
     final wsServer = Provider.of<WsServerService>(context, listen: false);
     final playerController = Provider.of<TvPlayerController>(context, listen: false);
+
+    // Lắng nghe sự kiện thay đổi kết nối để kích hoạt/hủy đếm ngược
+    _connectionSub = wsServer.onClientConnectionChanged.listen((connected) {
+      if (!connected) {
+        _startDisconnectTimer();
+      } else {
+        _cancelDisconnectTimer();
+      }
+    });
+
+    // Nếu lúc bắt đầu đã bị mất kết nối (rất hiếm), kích hoạt timer luôn
+    if (!wsServer.isClientConnected) {
+      _startDisconnectTimer();
+    }
 
     // ─── Luồng COMMAND: Remote → TV ───
     wsServer.onCommandReceived = (msg) {
@@ -129,17 +192,10 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
       ));
     };
 
-    // ─── Luồng disconnect của Remote ───
+    // Callback dọn dẹp khi remote ngắt kết nối
     wsServer.onClientDisconnected = () {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Thiết bị điều khiển đã ngắt kết nối. Video vẫn tiếp tục phát!'),
-            backgroundColor: AppColors.warning,
-            duration: Duration(seconds: 4),
-          ),
-        );
-      }
+      // Stream subscription ở trên đã xử lý việc đếm ngược quay lại màn hình chờ.
+      // Ở đây ta chỉ log hoặc bổ trợ nếu cần.
     };
   }
 
@@ -163,6 +219,8 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
   @override
   void dispose() {
     _overlayTimer?.cancel();
+    _disconnectTimer?.cancel();
+    _connectionSub?.cancel();
 
     // Tắt Wake Lock
     final wakelock = Provider.of<TvWakelockService>(context, listen: false);
@@ -186,6 +244,8 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
     final wsServer = Provider.of<WsServerService>(context);
     final playerController = Provider.of<TvPlayerController>(context);
 
+    final isConnected = wsServer.isClientConnected;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -207,30 +267,69 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
               ),
             ),
 
-          // Lớp phủ cảnh báo Remote ngắt kết nối
-          if (!wsServer.isClientConnected)
-            Positioned(
-              bottom: 24.0,
-              right: 24.0,
+          // Lớp phủ Glassmorphic đếm ngược khi mất kết nối (Chuyên nghiệp hơn)
+          if (!isConnected)
+            Positioned.fill(
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0, vertical: 10.0),
-                decoration: BoxDecoration(
-                  color: Colors.black87,
-                  borderRadius: BorderRadius.circular(20.0),
-                  border: Border.all(
-                      color: AppColors.warning.withValues(alpha: 0.5)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.wifi_off, color: AppColors.warning, size: 16),
-                    SizedBox(width: 8.0),
-                    Text(
-                      'Đang chờ thiết bị điều khiển kết nối lại...',
-                      style: TextStyle(color: Colors.white, fontSize: 12.0),
+                color: Colors.black.withValues(alpha: 0.8),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 32.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(24.0),
+                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.warning.withValues(alpha: 0.15),
+                          blurRadius: 40,
+                          spreadRadius: 5,
+                        ),
+                      ],
                     ),
-                  ],
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.wifi_off_rounded,
+                          size: 64,
+                          color: AppColors.warning,
+                        ),
+                        const SizedBox(height: 20.0),
+                        const Text(
+                          'Mất kết nối với thiết bị điều khiển',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22.0,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 12.0),
+                        Text(
+                          'Đang chờ kết nối lại... Tự động quay lại màn hình chờ sau $_disconnectCountdown giây.',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14.0,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 28.0),
+                        SizedBox(
+                          width: 180,
+                          height: 4,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: LinearProgressIndicator(
+                              value: _disconnectCountdown / 15.0,
+                              backgroundColor: AppColors.surfaceLight,
+                              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.warning),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

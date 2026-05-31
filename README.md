@@ -8,7 +8,7 @@
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Android%20TV-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://www.android.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
-[![Release](https://img.shields.io/badge/Release-v1.2.0-brightgreen?style=for-the-badge)](https://github.com/TrDuy-pan3000/YT-Control/releases/latest)
+[![Release](https://img.shields.io/badge/Release-v1.2.1-brightgreen?style=for-the-badge)](https://github.com/TrDuy-pan3000/YT-Control/releases/latest)
 
 <br/>
 
@@ -18,8 +18,8 @@
 
 ## ⬇️ Tải Xuống APK
 
-<a href="https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.2.0/yt_control_v1.2.0.apk">
-  <img src="https://img.shields.io/badge/📥%20Tải%20APK%20v1.2.0-53.1%20MB-FF5722?style=for-the-badge" alt="Download APK" height="50"/>
+<a href="https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.2.1/yt_control_v1.2.1.apk">
+  <img src="https://img.shields.io/badge/📥%20Tải%20APK%20v1.2.1-53.1%20MB-FF5722?style=for-the-badge" alt="Download APK" height="50"/>
 </a>
 
 *Không cần tài khoản Google Play · Cài đặt trực tiếp qua APK*
@@ -69,7 +69,7 @@
 - **Mạng**: Cả hai thiết bị **phải cùng mạng Wi-Fi** nội bộ
 
 ### Bước 1: Tải APK
-👉 **[Tải yt_control_v1.2.0.apk (v1.2.0 · 53.1 MB)](https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.2.0/yt_control_v1.2.0.apk)**
+👉 **[Tải yt_control_v1.2.1.apk (v1.2.1 · 53.1 MB)](https://github.com/TrDuy-pan3000/YT-Control/releases/download/v1.2.1/yt_control_v1.2.1.apk)**
 
 ### Bước 2: Cài APK lên Tivi
 ```
